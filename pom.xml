@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-  <parent>
-    <groupId>org.sonatype.oss</groupId>
-    <artifactId>oss-parent</artifactId>
-    <version>7</version>
-  </parent>
-
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.github.kristofa</groupId>
+  <groupId>io.zipkin.brave</groupId>
   <artifactId>brave</artifactId>
-  <version>2.4-SNAPSHOT</version>
+  <version>3.9.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>brave</name>
@@ -26,11 +20,12 @@
 		<distribution>repo</distribution>
 	</license>
    </licenses>
-   <scm>
-   		<connection>scm:git:git@github.com:kristofa/brave.git</connection>
-    	<url>git@github.com:kristofa/brave.git</url>
-    	<developerConnection>scm:git:git@github.com:kristofa/brave.git</developerConnection>
-   </scm>
+  <scm>
+    <url>https://github.com/openzipkin/brave</url>
+    <connection>scm:git:https://github.com/openzipkin/brave.git</connection>
+    <developerConnection>scm:git:https://github.com/openzipkin/brave.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
    <developers>
    		<developer>
       		<id>kristofa</id>
@@ -41,37 +36,111 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <spring.version>3.2.2.RELEASE</spring.version>
+    <spring.version>4.1.6.RELEASE</spring.version>
+    <zipkin.version>1.5.1</zipkin.version>
+    <log4j.version>2.3</log4j.version>
+    <httpcomponents.version>4.4.1</httpcomponents.version>
+
+    <maven-plugin.version>0.3.3</maven-plugin.version>
+    <maven-compiler-plugin.version>3.5.1</maven-compiler-plugin.version>
+    <maven-install-plugin.version>2.5.2</maven-install-plugin.version>
+    <maven-source-plugin.version>3.0.0</maven-source-plugin.version>
+    <maven-javadoc-plugin.version>2.10.3</maven-javadoc-plugin.version>
+    <maven-jar-plugin.version>2.6</maven-jar-plugin.version>
+    <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
+    <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
+    <centralsync-maven-plugin.version>0.1.0</centralsync-maven-plugin.version>
+
+    <!-- Catch common Java mistakes as compile-time errors -->
+    <plexus-compiler-javac-errorprone.version>2.8</plexus-compiler-javac-errorprone.version>
+    <errorprone.version>2.0.9</errorprone.version>
   </properties>
 
   <modules>
-  	<module>brave-interfaces</module>
-    <module>brave-impl</module>
-    <module>brave-impl-spring</module>
+    <module>brave-core</module>
+    <module>brave-benchmarks</module>
+    <module>brave-http</module>
+    <module>brave-core-spring</module>
     <module>brave-resteasy-spring</module>
-    <module>brave-zipkin-spancollector</module>
-    <module>flume-zipkin-collector-sink</module>
-    <module>brave-tracefilters</module>
-    <module>brave-client</module>
+    <module>brave-resteasy3-spring</module>
+    <module>brave-spancollector-http</module>
+    <module>brave-spancollector-scribe</module>
+    <module>brave-spancollector-kafka</module>
+    <module>brave-spancollector-local</module>
+    <module>brave-sampler-zookeeper</module>
     <module>brave-jersey</module>
     <module>brave-jersey2</module>
-    <module>flume-zipkin-metrics-sink</module>
+    <module>brave-jaxrs2</module>
+    <module>brave-grpc</module>
     <module>brave-apache-http-interceptors</module>
+    <module>brave-spring-web-servlet-interceptor</module>
+    <module>brave-spring-resttemplate-interceptors</module>
     <module>brave-mysql</module>
+    <module>brave-web-servlet-filter</module>
+    <module>brave-okhttp</module>
   </modules>
+
+  <distributionManagement>
+    <repository>
+      <id>bintray</id>
+      <url>https://api.bintray.com/maven/openzipkin/maven/brave/;publish=1</url>
+    </repository>
+    <snapshotRepository>
+      <id>jfrog-snapshots</id>
+      <url>http://oss.jfrog.org/artifactory/oss-snapshot-local</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <issueManagement>
+    <system>Github</system>
+    <url>https://github.com/openzipkin/brave/issues</url>
+  </issueManagement>
 
   <dependencyManagement>
   	<dependencies>
+        <dependency>
+            <groupId>io.zipkin.java</groupId>
+            <artifactId>zipkin</artifactId>
+            <version>${zipkin.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.zipkin.java</groupId>
+            <artifactId>zipkin-junit</artifactId>
+            <version>${zipkin.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>libthrift</artifactId>
+            <version>0.9.3</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-lang</groupId>
+                    <artifactId>commons-lang</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>httpclient</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>httpcore</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
   		<dependency>
-    			<groupId>org.springframework</groupId>
+            <groupId>org.springframework</groupId>
 			<artifactId>spring-core</artifactId>
 			<version>${spring.version}</version>
-	    	</dependency>
-    		<dependency>
+        </dependency>
+        <dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-context</artifactId>
 			<version>${spring.version}</version>
-	    	</dependency>
+        </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-webmvc</artifactId>
@@ -82,16 +151,40 @@
             <artifactId>spring-test</artifactId>
             <version>${spring.version}</version>
         </dependency>
-		<dependency>
-		        <groupId>org.apache.httpcomponents</groupId>
-		        <artifactId>httpcore</artifactId>
-		        <version>4.3.2</version>
-    		</dependency>
-
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>14.0.1</version>
+            <groupId>com.google.auto.value</groupId>
+            <artifactId>auto-value</artifactId>
+            <version>1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+            <version>${httpcomponents.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>${httpcomponents.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-jul</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>${log4j.version}</version>
         </dependency>
   	</dependencies>
   </dependencyManagement>
@@ -100,42 +193,60 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.10</version>
+      <version>4.12</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+      <version>3.2.0</version>
+    </dependency>
+    <!-- Main code uses jul and tests log with log4j -->
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-core</artifactId>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-jul</artifactId>
+        <scope>test</scope>
     </dependency>
     <dependency>
 		<groupId>org.mockito</groupId>
 		<artifactId>mockito-all</artifactId>
-		<version>1.8.5</version>
+		<version>1.10.19</version>
 		<scope>test</scope>
 	</dependency>
-	<dependency>
-		<groupId>log4j</groupId>
-		<artifactId>log4j</artifactId>
-		<version>1.2.16</version>
-		<scope>provided</scope>
-	</dependency>
-	<!-- Slf4j is tricky to get right so put our dependencies here. -->
-	<dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-log4j12</artifactId>
-        <version>1.7.5</version>
-		<scope>provided</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-api</artifactId>
-        <version>1.7.5</version>
-    </dependency>
-    <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>jcl-over-slf4j</artifactId>
-        <version>1.7.5</version>
-		<scope>provided</scope>
-    </dependency>
   </dependencies>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <!-- mvn -N io.takari:maven:wrapper -Dmaven=3.3.9 -->
+        <plugin>
+          <groupId>io.takari</groupId>
+          <artifactId>maven</artifactId>
+          <version>${maven-plugin.version}</version>
+        </plugin>
+
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven-compiler-plugin.version}</version>
+        </plugin>
+
+        <plugin>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>${maven-jar-plugin.version}</version>
+        </plugin>
+
+        <plugin>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>${maven-shade-plugin.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
         <resources>
             <resource>
                 <filtering>false</filtering>
@@ -168,110 +279,174 @@
                 <directory>src/test/resources</directory>
             </testResource>
         </testResources>
+      <plugins>
+          <plugin>
+              <inherited>true</inherited>
+              <artifactId>maven-compiler-plugin</artifactId>
+              <configuration>
+                  <source>1.8</source>
+                  <target>1.8</target>
+                  <optimize>true</optimize>
+                  <debug>true</debug>
+                  <compilerId>javac-with-errorprone</compilerId>
+                  <forceJavacCompilerUse>true</forceJavacCompilerUse>
+                  <showWarnings>true</showWarnings>
+                  <compilerArgument>-XepDisableWarningsInGeneratedCode</compilerArgument>
+              </configuration>
+              <dependencies>
+                  <dependency>
+                      <groupId>org.codehaus.plexus</groupId>
+                      <artifactId>plexus-compiler-javac-errorprone</artifactId>
+                      <version>${plexus-compiler-javac-errorprone.version}</version>
+                  </dependency>
+                  <dependency>
+                      <groupId>com.google.errorprone</groupId>
+                      <artifactId>error_prone_core</artifactId>
+                      <version>${errorprone.version}</version>
+                  </dependency>
+              </dependencies>
+              <executions>
+                  <!-- Ensure main source tree compiles to Java 7 bytecode. -->
+                  <execution>
+                      <id>default-compile</id>
+                      <phase>compile</phase>
+                      <goals>
+                          <goal>compile</goal>
+                      </goals>
+                      <configuration>
+                          <source>1.7</source>
+                          <target>1.7</target>
+                      </configuration>
+                  </execution>
+              </executions>
+          </plugin>
+          <!-- Make sure Java 8 classes and methods aren't accidentally used -->
+          <plugin>
+              <groupId>org.codehaus.mojo</groupId>
+              <artifactId>animal-sniffer-maven-plugin</artifactId>
+              <version>1.14</version>
+              <configuration>
+                  <signature>
+                      <groupId>org.codehaus.mojo.signature</groupId>
+                      <artifactId>java17</artifactId>
+                      <version>1.0</version>
+                  </signature>
+              </configuration>
+              <executions>
+                  <execution>
+                      <goals>
+                          <goal>check</goal>
+                      </goals>
+                  </execution>
+              </executions>
+          </plugin>
+          <plugin>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>2.18.1</version>
+              <configuration>
+                  <systemPropertyVariables>
+                      <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
+                  </systemPropertyVariables>
+              </configuration>
+          </plugin>
+          <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-eclipse-plugin</artifactId>
+              <version>2.9</version>
+              <configuration>
+                  <downloadSources>true</downloadSources>
+                  <downloadJavadocs>true</downloadJavadocs>
+              </configuration>
+          </plugin>
+          <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-failsafe-plugin</artifactId>
+              <version>2.14</version>
+              <executions>
+                  <execution>
+                      <id>integration-test</id>
+                      <goals>
+                          <goal>integration-test</goal>
+                      </goals>
+                  </execution>
+                  <execution>
+                      <id>verify</id>
+                      <goals>
+                          <goal>verify</goal>
+                      </goals>
+                  </execution>
+              </executions>
+          </plugin>
+      <!-- Ensures checksums are added to published jars -->
+      <plugin>
+        <artifactId>maven-install-plugin</artifactId>
+        <version>${maven-install-plugin.version}</version>
+        <configuration>
+          <createChecksum>true</createChecksum>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>${maven-release-plugin.version}</version>
+        <configuration>
+          <useReleaseProfile>false</useReleaseProfile>
+          <releaseProfiles>release</releaseProfiles>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
+          <!-- to match zipkin-scala (openzipkin/zipkin) -->
+          <tagNameFormat>@{project.version}</tagNameFormat>
+        </configuration>
+      </plugin>
 
-        <pluginManagement>
-      	  <plugins>
-       	     	<plugin>
-                	<inherited>true</inherited>
-                	<groupId>org.apache.maven.plugins</groupId>
-                	<artifactId>maven-compiler-plugin</artifactId>
-                	<version>2.5.1</version>
-                	<configuration>
-                   		<source>1.6</source>
-                    	<target>1.6</target>
-                    	<optimize>true</optimize>
-                    	<debug>true</debug>
-                	</configuration>
-       	     	</plugin>
-            	<plugin>
-                	<groupId>org.apache.maven.plugins</groupId>
-                	<artifactId>maven-eclipse-plugin</artifactId>
-                	<version>2.9</version>
-                	<configuration>
-                    	<downloadSources>true</downloadSources>
-                    	<downloadJavadocs>true</downloadJavadocs>
-                	</configuration>
-            	</plugin>
-            	<plugin>
-                	<groupId>org.apache.maven.plugins</groupId>
-                	<artifactId>maven-source-plugin</artifactId>
-                	<version>2.2</version>
-                	<executions>
-                    	<execution>
-                        	<id>attach-sources</id>
-                        	<goals>
-                            	<goal>jar</goal>
-                        	</goals>
-                    	</execution>
-                	</executions>
-            	</plugin>
-            	<plugin>
-                	<groupId>org.apache.maven.plugins</groupId>
-                	<artifactId>maven-javadoc-plugin</artifactId>
-                	<version>2.8.1</version>
-                	<executions>
-                    	<execution>
-                        	<id>attach-javadocs</id>
-                        	<goals>
-                            	<goal>jar</goal>
-                        	</goals>
-                    	</execution>
-                	</executions>
-            	</plugin>
-            	<plugin>
-                	<groupId>org.apache.maven.plugins</groupId>
-                	<artifactId>maven-deploy-plugin</artifactId>
-                	<version>2.7</version>
-            	</plugin>
-            	<plugin>
-            		<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-failsafe-plugin</artifactId>
-					<version>2.14</version>
-					<executions>
-						<execution>
-							<id>integration-test</id>
-							<goals>
-								<goal>integration-test</goal>
-							</goals>
-						</execution>
-						<execution>
-							<id>verify</id>
-							<goals>
-								<goal>verify</goal>
-							</goals>
-						</execution>
-					</executions>
-	    		</plugin>
-          </plugins>
-        </pluginManagement>
-    </build>
-    <profiles>
-        <profile>
-            <id>release-sign-artifacts</id>
-            <activation>
-                <property>
-                    <name>performRelease</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.1</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+      <plugin>
+        <groupId>io.zipkin.centralsync-maven-plugin</groupId>
+        <artifactId>centralsync-maven-plugin</artifactId>
+        <version>${centralsync-maven-plugin.version}</version>
+        <configuration>
+          <packageName>brave</packageName>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <!-- Creates source jar -->
+          <plugin>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>${maven-source-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <!-- Creates javadoc jar -->
+          <plugin>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>${maven-javadoc-plugin.version}</version>
+            <configuration>
+              <failOnError>false</failOnError>
+              <!-- hush pedantic warnings: we don't put param and return on everything! -->
+              <additionalparam>-Xdoclint:none</additionalparam>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+                <phase>package</phase>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

@@ -2,7 +2,9 @@ package com.github.kristofa.brave.resteasy;
 
 import javax.ws.rs.ext.Provider;
 
-import org.apache.commons.lang.Validate;
+import com.github.kristofa.brave.*;
+import com.github.kristofa.brave.http.*;
+
 import org.jboss.resteasy.annotations.interception.ClientInterceptor;
 import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
@@ -10,12 +12,6 @@ import org.jboss.resteasy.spi.interception.ClientExecutionContext;
 import org.jboss.resteasy.spi.interception.ClientExecutionInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.client.ClientRequestInterceptor;
-import com.github.kristofa.brave.client.ClientResponseInterceptor;
-import com.github.kristofa.brave.client.spanfilter.SpanNameFilter;
-import com.google.common.base.Optional;
 
 /**
  * {@link ClientExecutionInterceptor} that uses the {@link ClientTracer} to set up a new span. </p> It adds the necessary
@@ -44,40 +40,22 @@ import com.google.common.base.Optional;
 @ClientInterceptor
 public class BraveClientExecutionInterceptor implements ClientExecutionInterceptor {
 
-    private final ClientRequestInterceptor clientRequestInterceptor;
-    private final ClientResponseInterceptor clientResponseInterceptor;
+    private final ClientRequestInterceptor requestInterceptor;
+    private final ClientResponseInterceptor responseInterceptor;
+    private final SpanNameProvider spanNameProvider;
 
     /**
      * Create a new instance.
      *
-     * @param clientTracer ClientTracer.
+     * @param spanNameProvider Provides span name.
+     * @param requestInterceptor Client request interceptor.
+     * @param responseInterceptor Client response interceptor.
      */
-    @Autowired(required = false)
-    public BraveClientExecutionInterceptor(final ClientTracer clientTracer) {
-        this(clientTracer, Optional.<SpanNameFilter>absent());
-    }
-
-    /**
-     * Create a new instance.
-     *
-     * @param clientTracer ClientTracer.
-     */
-    @Autowired(required = false)
-    public BraveClientExecutionInterceptor(final ClientTracer clientTracer, final SpanNameFilter spanNameFilter) {
-        this(clientTracer, Optional.of(spanNameFilter));
-    }
-
-    /**
-     * Private Constructor.
-     *
-     * @param clientTracer ClientTracer
-     * @param spanNameFilter {@link Optional} {@link SpanNameFilter}
-     */
-    private BraveClientExecutionInterceptor(final ClientTracer clientTracer, final Optional<SpanNameFilter> spanNameFilter) {
-        Validate.notNull(clientTracer);
-        Validate.notNull(spanNameFilter);
-        clientRequestInterceptor = new ClientRequestInterceptor(clientTracer, spanNameFilter);
-        clientResponseInterceptor = new ClientResponseInterceptor(clientTracer);
+    @Autowired
+    public BraveClientExecutionInterceptor(SpanNameProvider spanNameProvider, ClientRequestInterceptor requestInterceptor, ClientResponseInterceptor responseInterceptor) {
+        this.requestInterceptor = requestInterceptor;
+        this.spanNameProvider = spanNameProvider;
+        this.responseInterceptor = responseInterceptor;
     }
 
     /**
@@ -88,19 +66,27 @@ public class BraveClientExecutionInterceptor implements ClientExecutionIntercept
 
         final ClientRequest request = ctx.getRequest();
 
-        clientRequestInterceptor.handle(new RestEasyClientRequestAdapter(request), Optional.<String>absent());
+        final HttpClientRequest httpClientRequest = new RestEasyHttpClientRequest(request);
+        final ClientRequestAdapter adapter = new HttpClientRequestAdapter(httpClientRequest, spanNameProvider);
+        requestInterceptor.handle(adapter);
 
         ClientResponse<?> response = null;
-        Exception exception = null;
         try {
             response = ctx.proceed();
         } catch (final Exception e) {
-            exception = e;
+            throw e;
         }
-
-        clientResponseInterceptor.handle(new RestEasyClientResponseAdapter(response));
-        if (exception != null) {
-            throw exception;
+        finally
+        {
+            if (response != null) {
+                final HttpResponse httpResponse = new RestEasyHttpClientResponse(response);
+                final ClientResponseAdapter responseAdapter = new HttpClientResponseAdapter(httpResponse);
+                responseInterceptor.handle(responseAdapter);
+            }
+            else
+            {
+                responseInterceptor.handle(NoAnnotationsClientResponseAdapter.getInstance());
+            }
         }
         return response;
     }
